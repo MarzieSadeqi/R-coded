@@ -1,0 +1,46 @@
+---
+title: "BRFSS Health Behavior Analysis"
+author: "Marzie Mohammadsadeqiqayem"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(janitor)
+library(broom)
+
+
+# Load CSV (make sure 'data/brfss_2021.csv' exists)
+brfss <- read_csv("data/brfss_2021.csv") %>%
+  clean_names() %>%
+  filter(!is.na(mentalhlth), !is.na(income2), !is.na(sex), !is.na(hlthpln1)) %>%
+  mutate(
+    poor_mental_health = if_else(mentalhlth >= 14, 1, 0),
+    income_group = case_when(
+      income2 %in% c(1, 2) ~ "Low",
+      income2 %in% c(3, 4, 5) ~ "Medium",
+      income2 %in% c(6, 7, 8) ~ "High",
+      TRUE ~ NA_character_
+    ),
+    sex = factor(sex, levels = c(1, 2), labels = c("Male", "Female")),
+    hlthpln1 = factor(hlthpln1, levels = c(1, 2), labels = c("Yes", "No"))
+  )
+
+
+ggplot(brfss, aes(x = income_group, fill = factor(poor_mental_health))) +
+  geom_bar(position = "fill") +
+  labs(
+    title = "Proportion Reporting Poor Mental Health (14+ Days)",
+    x = "Income Group", y = "Proportion",
+    fill = "Poor Mental Health"
+  ) +
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "red")) +
+  theme_minimal()
+
+
+model <- glm(poor_mental_health ~ sex + income_group + hlthpln1,
+             data = brfss,
+             family = "binomial")
+
+summary(model)
